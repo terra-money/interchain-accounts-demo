@@ -1,0 +1,12 @@
+syntax = "proto3";
+package seantking.interchainaccount.interchainaccount;
+
+// this line is used by starport scaffolding # genesis/proto/import
+
+option go_package = "github.com/seantking/interchain-account/x/interchainaccount/types";
+
+// GenesisState defines the capability module's genesis state.
+message GenesisState {
+    // this line is used by starport scaffolding # genesis/proto/state
+}
+
