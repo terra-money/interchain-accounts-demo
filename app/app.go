@@ -83,15 +83,15 @@ import (
 	ibcaccount "github.com/interchainberlin/ica/x/ibc-account"
 	ibcaccountkeeper "github.com/interchainberlin/ica/x/ibc-account/keeper"
 	ibcaccounttypes "github.com/interchainberlin/ica/x/ibc-account/types"
-	"github.com/interchainberlin/ica/x/interchainaccount"
-	interchainaccountkeeper "github.com/interchainberlin/ica/x/interchainaccount/keeper"
-	interchainaccounttypes "github.com/interchainberlin/ica/x/interchainaccount/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	// this line is used by starport scaffolding # stargate/app/moduleImport
+	intertx "github.com/interchainberlin/ica/x/inter-tx"
+	intertxkeeper "github.com/interchainberlin/ica/x/inter-tx/keeper"
+	intertxtypes "github.com/interchainberlin/ica/x/inter-tx/types"
 )
 
-const Name = "interchainaccount"
+const Name = "ica"
 
 // this line is used by starport scaffolding # stargate/wasm/app/enabledProposals
 
@@ -134,8 +134,8 @@ var (
 		evidence.AppModuleBasic{},
 		transfer.AppModuleBasic{},
 		vesting.AppModuleBasic{},
-		interchainaccount.AppModuleBasic{},
 		ibcaccount.AppModuleBasic{},
+		intertx.AppModuleBasic{},
 	// this line is used by starport scaffolding # stargate/app/moduleBasic
 	)
 
@@ -208,8 +208,8 @@ type App struct {
 	ScopedTransferKeeper   capabilitykeeper.ScopedKeeper
 	ScopedIbcAccountKeeper capabilitykeeper.ScopedKeeper
 
-	interchainaccountKeeper interchainaccountkeeper.Keeper
-	ibcAccountKeeper        ibcaccountkeeper.Keeper
+	ibcAccountKeeper ibcaccountkeeper.Keeper
+	interTxKeeper    intertxkeeper.Keeper
 	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
 
 	// the module manager
@@ -239,8 +239,7 @@ func New(
 		minttypes.StoreKey, distrtypes.StoreKey, slashingtypes.StoreKey,
 		govtypes.StoreKey, paramstypes.StoreKey, ibchost.StoreKey, upgradetypes.StoreKey,
 		evidencetypes.StoreKey, ibctransfertypes.StoreKey, capabilitytypes.StoreKey,
-		interchainaccounttypes.StoreKey,
-		ibcaccounttypes.StoreKey,
+		ibcaccounttypes.StoreKey, intertxtypes.StoreKey,
 		// this line is used by starport scaffolding # stargate/app/storeKey
 	)
 	tkeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey)
@@ -330,9 +329,11 @@ func New(
 			// register the tx encoder for cosmos-sdk
 			"cosmos-sdk": ibcaccountkeeper.SerializeCosmosTx(appCodec, interfaceRegistry),
 		}, app.IBCKeeper.ChannelKeeper, &app.IBCKeeper.PortKeeper,
-		app.AccountKeeper, scopedIbcAccountKeeper, app.Router(),
+		app.AccountKeeper, scopedIbcAccountKeeper, app.Router(), app,
 	)
 	ibcAccountModule := ibcaccount.NewAppModule(app.ibcAccountKeeper)
+
+	app.interTxKeeper = intertxkeeper.NewKeeper(appCodec, keys[intertxtypes.StoreKey], app.ibcAccountKeeper)
 
 	// Create static IBC router, add transfer route, then set and seal it
 	ibcRouter := porttypes.NewRouter()
@@ -346,10 +347,6 @@ func New(
 	)
 	// If evidence needs to be handled for the app, set routes in router here and seal
 	app.EvidenceKeeper = *evidenceKeeper
-
-	app.interchainaccountKeeper = *interchainaccountkeeper.NewKeeper(
-		appCodec, keys[interchainaccounttypes.StoreKey], keys[interchainaccounttypes.MemStoreKey],
-	)
 
 	// this line is used by starport scaffolding # stargate/app/keeperDefinition
 
@@ -387,8 +384,8 @@ func New(
 		ibc.NewAppModule(app.IBCKeeper),
 		params.NewAppModule(app.ParamsKeeper),
 		transferModule,
-		interchainaccount.NewAppModule(appCodec, app.interchainaccountKeeper),
 		ibcAccountModule,
+		intertx.NewAppModule(appCodec, app.interTxKeeper),
 		// this line is used by starport scaffolding # stargate/app/appModule
 	)
 
@@ -422,7 +419,6 @@ func New(
 		genutiltypes.ModuleName,
 		evidencetypes.ModuleName,
 		ibctransfertypes.ModuleName,
-		interchainaccounttypes.ModuleName,
 		ibcaccounttypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
 	)
@@ -621,4 +617,16 @@ func initParamsKeeper(appCodec codec.BinaryMarshaler, legacyAmino *codec.LegacyA
 	// this line is used by starport scaffolding # stargate/app/paramSubspace
 
 	return paramsKeeper
+}
+
+func (app *App) OnAccountCreated(ctx sdk.Context, sourcePort, sourceChannel string, address sdk.AccAddress) {
+	app.interTxKeeper.OnAccountCreated(ctx, sourcePort, sourceChannel, address)
+}
+
+func (*App) OnTxSucceeded(ctx sdk.Context, sourcePort, sourceChannel string, txHash []byte, txBytes []byte) {
+	// noop
+}
+
+func (*App) OnTxFailed(ctx sdk.Context, sourcePort, sourceChannel string, txHash []byte, txBytes []byte) {
+	// noop
 }
