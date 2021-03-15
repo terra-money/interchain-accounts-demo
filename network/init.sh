@@ -1,31 +1,86 @@
 #!/bin/bash
-DEV_MNEMONIC_1="alley afraid soup fall idea toss can goose become valve initial strong forward bright dish figure check leopard decide warfare hub unusual join cart"
-DEV_MNEMONIC_2="record gift you once hip style during joke field prize dust unique length more pencil transfer quit train device arrive energy sort steak upset"
 
-### Chain 1
-yes $DEV_MNEMONIC_1 | icad keys add val --recover --home ~/.demo-test-1
+# Configure predetermined settings
+# val1: cosmos1mjk79fjjgpplak5wq838w0yd982gzkyfrk07am
+# val2: cosmos17dtl0mjt3t77kpuhg2edqzjpszulwhgzuj9ljs
+BINARY=icad
+CHAIN_DIR=./data
+CHAINID_1=test-1
+CHAINID_2=test-2
+MNEMONIC_1="alley afraid soup fall idea toss can goose become valve initial strong forward bright dish figure check leopard decide warfare hub unusual join cart"
+MNEMONIC_2="record gift you once hip style during joke field prize dust unique length more pencil transfer quit train device arrive energy sort steak upset"
+P2PPORT_1=16656
+P2PPORT_2=26656
+RPCPORT_1=16657
+RPCPORT_2=26657
+GRPCPORT_1=8090
+GRPCPORT_2=9090
+RESTPORT_1=1316
+RESTPORT_2=1317
 
-icad init --chain-id test-1 test-1 --home ~/.demo-test-1
+# Stop if it is already running 
+if pgrep -x "$BINARY" >/dev/null; then
+    echo "Terminating $BINARY..."
+    killall $BINARY
+fi
 
-sed -i -e 's/2665/1665/g' ~/.demo-test-1/config/config.toml
-sed -i -e 's#localhost:6060#localhost:6061#g' ~/.demo-test-1/config/config.toml
-sed -i -e 's#address = "0.0.0.0:9090"#address = "0.0.0.0:9092"#g' ~/.demo-test-1/config/app.toml
+echo "Removing previous data..."
+rm -rf $CHAIN_DIR/$CHAINID_1 &> /dev/null
+rm -rf $CHAIN_DIR/$CHAINID_2 &> /dev/null
 
-icad add-genesis-account $(icad keys show val -a --home ~/.demo-test-1) 100000000000stake --home ~/.demo-test-1
-icad gentx val 7000000000stake --chain-id test-1 --home ~/.demo-test-1
+# Add directories for both chains, exit if an error occurs
+if ! mkdir -p $CHAIN_DIR/$CHAINID_1 2>/dev/null; then
+    echo "Failed to create chain folder. Aborting..."
+    exit 1
+fi
 
-icad collect-gentxs --home ~/.demo-test-1
+if ! mkdir -p $CHAIN_DIR/$CHAINID_2 2>/dev/null; then
+    echo "Failed to create chain folder. Aborting..."
+    exit 1
+fi
 
-### Chain 2
-yes $DEV_MNEMONIC_2 | icad keys add val2 --recover --home ~/.demo-test-2
+echo "Initializing $CHAINID_1..."
+echo "Initializing $CHAINID_2..."
+$BINARY init test --home $CHAIN_DIR/$CHAINID_1 --chain-id=$CHAINID_1
+$BINARY init test --home $CHAIN_DIR/$CHAINID_2 --chain-id=$CHAINID_2
 
-icad init --chain-id test-2 test-2 --home ~/.demo-test-2
+echo "Adding genesis accounts..."
+echo $MNEMONIC_1 | $BINARY keys add val1 --home $CHAIN_DIR/$CHAINID_1 --recover --keyring-backend=test 
+echo $MNEMONIC_2 | $BINARY keys add val2 --home $CHAIN_DIR/$CHAINID_2 --recover --keyring-backend=test 
+$BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_1 keys show val1 --keyring-backend test -a) 100000000000stake  --home $CHAIN_DIR/$CHAINID_1
+$BINARY add-genesis-account $($BINARY --home $CHAIN_DIR/$CHAINID_2 keys show val2 --keyring-backend test -a) 100000000000stake  --home $CHAIN_DIR/$CHAINID_2
 
-icad add-genesis-account $(icad keys show val2 -a --home ~/.demo-test-2) 100000000000stake --home ~/.demo-test-2
-icad gentx val2 7000000000stake --chain-id test-2 --home ~/.demo-test-2
+echo "Creating and collecting gentx..."
+$BINARY gentx val1 7000000000stake --home $CHAIN_DIR/$CHAINID_1 --chain-id $CHAINID_1 --keyring-backend test
+$BINARY gentx val2 7000000000stake --home $CHAIN_DIR/$CHAINID_2 --chain-id $CHAINID_2 --keyring-backend test
+$BINARY collect-gentxs --home $CHAIN_DIR/$CHAINID_1
+$BINARY collect-gentxs --home $CHAIN_DIR/$CHAINID_2
 
-icad collect-gentxs --home ~/.demo-test-2
+echo "Changing defaults and ports in app.toml and config.toml files..."
+sed -i '' 's#"tcp://0.0.0.0:26656"#"tcp://0.0.0.0:'"$P2PPORT_1"'"#g' $CHAIN_DIR/$CHAINID_1/config/config.toml
+sed -i '' 's#"tcp://127.0.0.1:26657"#"tcp://0.0.0.0:'"$RPCPORT_1"'"#g' $CHAIN_DIR/$CHAINID_1/config/config.toml
+sed -i '' 's/timeout_commit = "5s"/timeout_commit = "1s"/g' $CHAIN_DIR/$CHAINID_1/config/config.toml
+sed -i '' 's/timeout_propose = "3s"/timeout_propose = "1s"/g' $CHAIN_DIR/$CHAINID_1/config/config.toml
+sed -i '' 's/index_all_keys = false/index_all_keys = true/g' $CHAIN_DIR/$CHAINID_1/config/config.toml
+sed -i '' 's/enable = false/enable = true/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
+sed -i '' 's/swagger = false/swagger = true/g' $CHAIN_DIR/$CHAINID_1/config/app.toml
+sed -i '' 's#"tcp://0.0.0.0:1317"#"tcp://0.0.0.0:'"$RESTPORT_1"'"#g' $CHAIN_DIR/$CHAINID_1/config/app.toml
 
-#echo "Running both chains"
-icad start --pruning nothing --home ~/.demo-test-1 &
-icad start --pruning nothing --home ~/.demo-test-2 &
+sed -i '' 's#"tcp://0.0.0.0:26656"#"tcp://0.0.0.0:'"$P2PPORT_2"'"#g' $CHAIN_DIR/$CHAINID_2/config/config.toml
+sed -i '' 's#"tcp://127.0.0.1:26657"#"tcp://0.0.0.0:'"$RPCPORT_2"'"#g' $CHAIN_DIR/$CHAINID_2/config/config.toml
+sed -i '' 's/timeout_commit = "5s"/timeout_commit = "1s"/g' $CHAIN_DIR/$CHAINID_2/config/config.toml
+sed -i '' 's/timeout_propose = "3s"/timeout_propose = "1s"/g' $CHAIN_DIR/$CHAINID_2/config/config.toml
+sed -i '' 's/index_all_keys = false/index_all_keys = true/g' $CHAIN_DIR/$CHAINID_2/config/config.toml
+sed -i '' 's/enable = false/enable = true/g' $CHAIN_DIR/$CHAINID_2/config/app.toml
+sed -i '' 's/swagger = false/swagger = true/g' $CHAIN_DIR/$CHAINID_2/config/app.toml
+sed -i '' 's#"tcp://0.0.0.0:1317"#"tcp://0.0.0.0:'"$RESTPORT_2"'"#g' $CHAIN_DIR/$CHAINID_2/config/app.toml
+
+echo "Starting $CHAINID_1 in $CHAIN_DIR..."
+echo "Creating log file at $CHAIN_DIR/$CHAINID_1.log"
+$BINARY start --home $CHAIN_DIR/$CHAINID_1 --pruning=nothing --grpc.address="0.0.0.0:$GRPCPORT_1" > $CHAIN_DIR/$CHAINID_1.log 2>&1 &
+
+echo "Starting $CHAINID_1 in $CHAIN_DIR..."
+echo "Creating log file at $CHAIN_DIR/$CHAINID_1.log"
+$BINARY start --home $CHAIN_DIR/$CHAINID_2 --pruning=nothing --grpc.address="0.0.0.0:$GRPCPORT_2" > $CHAIN_DIR/$CHAINID_2.log 2>&1 &
+
+
