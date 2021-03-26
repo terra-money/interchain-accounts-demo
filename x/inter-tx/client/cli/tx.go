@@ -2,16 +2,14 @@ package cli
 
 import (
 	"fmt"
-	"time"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/interchainberlin/ica/x/inter-tx/types"
-
-	clienttypes "github.com/cosmos/cosmos-sdk/x/ibc/core/02-client/types"
-	channelutils "github.com/cosmos/cosmos-sdk/x/ibc/core/04-channel/client/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -31,69 +29,28 @@ func GetTxCmd() *cobra.Command {
 
 	// this line is used by starport scaffolding # 1
 	cmd.AddCommand(
-		NewRegisterAccountCmd(),
+		getRegisterAccountCmd(),
+		getSendTxCmd(),
 	)
 
 	return cmd
 }
 
-func NewRegisterAccountCmd() *cobra.Command {
+func getRegisterAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "register [src-port] [src-channel]",
-		Args: cobra.ExactArgs(2),
+		Use: "register",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			srcPort := args[0]
-			srcChannel := args[1]
-
-			timeoutHeightStr, err := cmd.Flags().GetString(flagPacketTimeoutHeight)
-			if err != nil {
-				return err
-			}
-			timeoutHeight, err := clienttypes.ParseHeight(timeoutHeightStr)
-			if err != nil {
-				return err
-			}
-
-			timeoutTimestamp, err := cmd.Flags().GetUint64(flagPacketTimeoutTimestamp)
-			if err != nil {
-				return err
-			}
-
-			absoluteTimeouts, err := cmd.Flags().GetBool(flagAbsoluteTimeouts)
-			if err != nil {
-				return err
-			}
-
-			// if the timeouts are not absolute, retrieve latest block height and block timestamp
-			// for the consensus state connected to the destination port/channel
-			if !absoluteTimeouts {
-				consensusState, height, _, err := channelutils.QueryLatestConsensusState(clientCtx, srcPort, srcChannel)
-				if err != nil {
-					return err
-				}
-
-				if !timeoutHeight.IsZero() {
-					absoluteHeight := height
-					absoluteHeight.RevisionNumber += timeoutHeight.RevisionNumber
-					absoluteHeight.RevisionHeight += timeoutHeight.RevisionHeight
-					timeoutHeight = absoluteHeight
-				}
-
-				if timeoutTimestamp != 0 {
-					timeoutTimestamp = consensusState.GetTimestamp() + timeoutTimestamp
-				}
-			}
+			sourcePort := viper.GetString(FlagSourcePort)
+			sourceChannel := viper.GetString(FlagSourceChannel)
 
 			msg := types.NewMsgRegisterAccount(
-				srcPort,
-				srcChannel,
-				timeoutHeight,
-				timeoutTimestamp,
+				sourcePort,
+				sourceChannel,
 				clientCtx.GetFromAddress().String(),
 			)
 
@@ -104,11 +61,62 @@ func NewRegisterAccountCmd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+	cmd.Flags().AddFlagSet(fsSourcePort)
+	cmd.Flags().AddFlagSet(fsSourceChannel)
+
+	_ = cmd.MarkFlagRequired(FlagSourcePort)
+	_ = cmd.MarkFlagRequired(FlagSourceChannel)
+	flags.AddTxFlagsToCmd(cmd)
+
+	return cmd
+}
+
+func getSendTxCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "send [type] [to_address] [amount]",
+		Args: cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			chainType := args[0]
+			fromAddress := clientCtx.GetFromAddress()
+			toAddress, err := sdk.AccAddressFromBech32(args[1])
+			if err != nil {
+				return err
+			}
+
+			amount, err := sdk.ParseCoinsNormalized(args[2])
+			if err != nil {
+				return err
+			}
+
+			sourcePort := viper.GetString(FlagSourcePort)
+			sourceChannel := viper.GetString(FlagSourceChannel)
+
+			msg := types.NewMsgSend(
+				chainType,
+				sourcePort,
+				sourceChannel,
+				fromAddress,
+				toAddress,
+				amount,
+			)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	cmd.Flags().AddFlagSet(fsSourcePort)
+	cmd.Flags().AddFlagSet(fsSourceChannel)
+
+	_ = cmd.MarkFlagRequired(FlagSourcePort)
+	_ = cmd.MarkFlagRequired(FlagSourceChannel)
 
 	flags.AddTxFlagsToCmd(cmd)
-	cmd.Flags().String(flagPacketTimeoutHeight, "0-1000", "Packet timeout block height. The timeout is disabled when set to 0-0.")
-	cmd.Flags().Uint64(flagPacketTimeoutTimestamp, uint64((time.Duration(10) * time.Minute).Nanoseconds()), "Packet timeout timestamp in nanoseconds. Default is 10 minutes. The timeout is disabled when set to 0.")
-	cmd.Flags().Bool(flagAbsoluteTimeouts, false, "Timeout flags are used as absolute timeouts.")
-
 	return cmd
 }

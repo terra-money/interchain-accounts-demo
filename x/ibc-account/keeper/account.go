@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -10,7 +9,7 @@ import (
 )
 
 // RegisterIBCAccount performs registering IBC account.
-// It will generate the deterministic address by hashing {sourcePort}/{sourceChannel}{salt}.
+// It will generate the deterministic address by hashing {sourcePort}/{sourceChannel}/{salt}.
 func (k Keeper) registerIBCAccount(ctx sdk.Context, sourcePort, sourceChannel, destPort, destChannel string, salt []byte) (types.IBCAccountI, error) {
 	identifier := types.GetIdentifier(destPort, destChannel)
 	address := k.GenerateAddress(identifier, salt)
@@ -31,9 +30,6 @@ func (k Keeper) registerIBCAccount(ctx sdk.Context, sourcePort, sourceChannel, d
 	)
 	k.accountKeeper.NewAccount(ctx, ibcAccount)
 	k.accountKeeper.SetAccount(ctx, ibcAccount)
-	acc := k.accountKeeper.GetAccount(ctx, address)
-	testStr := acc.GetAddress().String()
-	fmt.Print(testStr)
 	return ibcAccount, nil
 }
 
@@ -45,12 +41,12 @@ func (k Keeper) GenerateAddress(identifier string, salt []byte) []byte {
 func (k Keeper) GetIBCAccount(ctx sdk.Context, addr sdk.AccAddress) (types.IBCAccount, error) {
 	acc := k.accountKeeper.GetAccount(ctx, addr)
 	if acc == nil {
-		return types.IBCAccount{}, sdkerrors.Wrap(types.ErrIBCAccountNotFound, "their is no account")
+		return types.IBCAccount{}, sdkerrors.Wrap(types.ErrIBCAccountNotFound, "there is no account")
 	}
 
 	ibcAcc, ok := acc.(*types.IBCAccount)
 	if !ok {
-		return types.IBCAccount{}, sdkerrors.Wrap(types.ErrIBCAccountNotFound, "account is not IBC account")
+		return types.IBCAccount{}, sdkerrors.Wrap(types.ErrIBCAccountNotFound, "account is not an IBC account")
 	}
 	return *ibcAcc, nil
 }
