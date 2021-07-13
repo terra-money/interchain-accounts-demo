@@ -39,20 +39,18 @@ func GetTxCmd() *cobra.Command {
 
 func getRegisterAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "register",
+		Use: "register --connection-id",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			sourcePort := viper.GetString(FlagSourcePort)
-			sourceChannel := viper.GetString(FlagSourceChannel)
+			connectionId := viper.GetString(FlagConnectionId)
 
 			msg := types.NewMsgRegisterAccount(
-				sourcePort,
-				sourceChannel,
 				clientCtx.GetFromAddress().String(),
+				connectionId,
 			)
 
 			if err := msg.ValidateBasic(); err != nil {
@@ -62,11 +60,10 @@ func getRegisterAccountCmd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	cmd.Flags().AddFlagSet(fsSourcePort)
-	cmd.Flags().AddFlagSet(fsSourceChannel)
 
-	_ = cmd.MarkFlagRequired(FlagSourcePort)
-	_ = cmd.MarkFlagRequired(FlagSourceChannel)
+	cmd.Flags().AddFlagSet(fsConnectionId)
+	_ = cmd.MarkFlagRequired(FlagConnectionId)
+
 	flags.AddTxFlagsToCmd(cmd)
 
 	return cmd
@@ -74,7 +71,7 @@ func getRegisterAccountCmd() *cobra.Command {
 
 func getSendTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "send [type] [to_address] [amount]",
+		Use:  "send [interchain_account_address] [to_address] [amount] --connection-id",
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -82,9 +79,9 @@ func getSendTxCmd() *cobra.Command {
 				return err
 			}
 
-			chainType := args[0]
-			fromAddress := clientCtx.GetFromAddress()
-			toAddress, err := sdk.AccAddressFromBech32(args[1])
+			ownerAddr := clientCtx.GetFromAddress()
+			interchainAccountAddr := args[0]
+			toAddress := args[1]
 			if err != nil {
 				return err
 			}
@@ -94,17 +91,16 @@ func getSendTxCmd() *cobra.Command {
 				return err
 			}
 
-			sourcePort := viper.GetString(FlagSourcePort)
-			sourceChannel := viper.GetString(FlagSourceChannel)
+			connectionId := viper.GetString(FlagConnectionId)
 
 			msg := types.NewMsgSend(
-				chainType,
-				sourcePort,
-				sourceChannel,
-				fromAddress,
+				interchainAccountAddr,
+				ownerAddr,
 				toAddress,
 				amount,
+				connectionId,
 			)
+
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -112,11 +108,10 @@ func getSendTxCmd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	cmd.Flags().AddFlagSet(fsSourcePort)
-	cmd.Flags().AddFlagSet(fsSourceChannel)
 
-	_ = cmd.MarkFlagRequired(FlagSourcePort)
-	_ = cmd.MarkFlagRequired(FlagSourceChannel)
+	cmd.Flags().AddFlagSet(fsConnectionId)
+
+	_ = cmd.MarkFlagRequired(FlagConnectionId)
 
 	flags.AddTxFlagsToCmd(cmd)
 	return cmd

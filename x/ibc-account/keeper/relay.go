@@ -12,67 +12,23 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-// TryRegisterIBCAccount try to register IBC account to source channel.
-// If no source channel exists or doesn't have capability, it will return error.
-// Salt is used to generate deterministic address.
-func (k Keeper) TryRegisterIBCAccount(ctx sdk.Context, sourcePort, sourceChannel string, salt []byte) error {
-	sourceChannelEnd, found := k.channelKeeper.GetChannel(ctx, sourcePort, sourceChannel)
+func (k Keeper) TrySendTx(ctx sdk.Context, accountOwner sdk.AccAddress, connectionId string, data interface{}) ([]byte, error) {
+	portId := k.GeneratePortId(accountOwner.String(), connectionId)
+	// Check for the active channel
+	activeChannelId, err := k.GetActiveChannel(ctx, portId)
+	if err != nil {
+		return nil, err
+	}
+
+	sourceChannelEnd, found := k.channelKeeper.GetChannel(ctx, portId, activeChannelId)
 	if !found {
-		return sdkerrors.Wrap(channeltypes.ErrChannelNotFound, sourceChannel)
+		return []byte{}, sdkerrors.Wrap(channeltypes.ErrChannelNotFound, activeChannelId)
 	}
 
 	destinationPort := sourceChannelEnd.GetCounterparty().GetPortID()
 	destinationChannel := sourceChannelEnd.GetCounterparty().GetChannelID()
 
-	channelCap, ok := k.scopedKeeper.GetCapability(ctx, host.ChannelCapabilityPath(sourcePort, sourceChannel))
-	if !ok {
-		return sdkerrors.Wrap(channeltypes.ErrChannelCapabilityNotFound, "module does not own channel capability")
-	}
-
-	// get the next sequence
-	sequence, found := k.channelKeeper.GetNextSequenceSend(ctx, sourcePort, sourceChannel)
-	if !found {
-		return channeltypes.ErrSequenceSendNotFound
-	}
-
-	packetData := types.IBCAccountPacketData{
-		Type: types.Type_REGISTER,
-		Data: salt,
-	}
-
-	// timeoutTimestamp is set to be a max number here so that we never recieve a timeout
-	// ics-27-1 uses ordered channels which can close upon recieving a timeout, which is an undesired effect
-	const timeoutTimestamp = ^uint64(0) >> 1 // Shift the unsigned bit to satisfy hermes relayer timestamp conversion
-
-	packet := channeltypes.NewPacket(
-		packetData.GetBytes(),
-		sequence,
-		sourcePort,
-		sourceChannel,
-		destinationPort,
-		destinationChannel,
-		clienttypes.ZeroHeight(),
-		timeoutTimestamp,
-	)
-
-	if err := k.channelKeeper.SendPacket(ctx, channelCap, packet); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// TryRunTx attemps to send messages to source channel.
-func (k Keeper) TryRunTx(ctx sdk.Context, sourcePort, sourceChannel, typ string, data interface{}) ([]byte, error) {
-	sourceChannelEnd, found := k.channelKeeper.GetChannel(ctx, sourcePort, sourceChannel)
-	if !found {
-		return []byte{}, sdkerrors.Wrap(channeltypes.ErrChannelNotFound, sourceChannel)
-	}
-
-	destinationPort := sourceChannelEnd.GetCounterparty().GetPortID()
-	destinationChannel := sourceChannelEnd.GetCounterparty().GetChannelID()
-
-	return k.createOutgoingPacket(ctx, sourcePort, sourceChannel, destinationPort, destinationChannel, typ, data)
+	return k.createOutgoingPacket(ctx, portId, activeChannelId, destinationPort, destinationChannel, data)
 }
 
 func (k Keeper) createOutgoingPacket(
@@ -80,18 +36,12 @@ func (k Keeper) createOutgoingPacket(
 	sourcePort,
 	sourceChannel,
 	destinationPort,
-	destinationChannel,
-	typ string,
+	destinationChannel string,
 	data interface{},
 ) ([]byte, error) {
 
 	if data == nil {
 		return []byte{}, types.ErrInvalidOutgoingData
-	}
-
-	txEncoder, ok := k.GetTxEncoder(typ)
-	if !ok {
-		return []byte{}, types.ErrUnsupportedChain
 	}
 
 	var msgs []sdk.Msg
@@ -105,7 +55,7 @@ func (k Keeper) createOutgoingPacket(
 		return []byte{}, types.ErrInvalidOutgoingData
 	}
 
-	txBytes, err := txEncoder(msgs)
+	txBytes, err := k.SerializeCosmosTx(k.cdc, msgs)
 	if err != nil {
 		return []byte{}, sdkerrors.Wrap(err, "invalid packet data or codec")
 	}
@@ -173,9 +123,34 @@ func (k Keeper) DeserializeTx(_ sdk.Context, txBytes []byte) ([]sdk.Msg, error) 
 	return res, nil
 }
 
-func (k Keeper) runTx(ctx sdk.Context, destPort, destChannel string, msgs []sdk.Msg) error {
-	identifier := types.GetIdentifier(destPort, destChannel)
-	err := k.AuthenticateTx(ctx, msgs, identifier)
+func (k Keeper) AuthenticateTx(ctx sdk.Context, msgs []sdk.Msg, portId string) error {
+	seen := map[string]bool{}
+	var signers []sdk.AccAddress
+	for _, msg := range msgs {
+		for _, addr := range msg.GetSigners() {
+			if !seen[addr.String()] {
+				signers = append(signers, addr)
+				seen[addr.String()] = true
+			}
+		}
+	}
+
+	interchainAccountAddr, err := k.GetInterchainAccountAddress(ctx, portId)
+	if err != nil {
+		return sdkerrors.ErrUnauthorized
+	}
+
+	for _, signer := range signers {
+		if interchainAccountAddr != signer.String() {
+			return sdkerrors.ErrUnauthorized
+		}
+	}
+
+	return nil
+}
+
+func (k Keeper) executeTx(ctx sdk.Context, sourcePort, destPort, destChannel string, msgs []sdk.Msg) error {
+	err := k.AuthenticateTx(ctx, msgs, sourcePort)
 	if err != nil {
 		return err
 	}
@@ -187,17 +162,9 @@ func (k Keeper) runTx(ctx sdk.Context, destPort, destChannel string, msgs []sdk.
 		}
 	}
 
-	// Use cache context.
-	// Receive packet msg should succeed regardless of the result of logic.
-	// But, if we just return the success even though handler is failed,
-	// the leftovers of state transition in handler will remain.
-	// However, this can make the unexpected error.
-	// To solve this problem, use cache context instead of context,
-	// and write the state transition if handler succeeds.
 	cacheContext, writeFn := ctx.CacheContext()
-	err = nil
 	for _, msg := range msgs {
-		_, msgErr := k.runMsg(cacheContext, msg)
+		_, msgErr := k.executeMsg(cacheContext, msg)
 		if msgErr != nil {
 			err = msgErr
 			break
@@ -214,49 +181,14 @@ func (k Keeper) runTx(ctx sdk.Context, destPort, destChannel string, msgs []sdk.
 	return nil
 }
 
-// AuthenticateTx verifies that the messages have the right permission.
-// It will check that the message's signers are the IBC account created by the right chain.
-func (k Keeper) AuthenticateTx(ctx sdk.Context, msgs []sdk.Msg, identifier string) error {
-	seen := map[string]bool{}
-	var signers []sdk.AccAddress
-	for _, msg := range msgs {
-		for _, addr := range msg.GetSigners() {
-			if !seen[addr.String()] {
-				signers = append(signers, addr)
-				seen[addr.String()] = true
-			}
-		}
-	}
-
-	for _, signer := range signers {
-		// Check where the interchain account is made from.
-		account := k.accountKeeper.GetAccount(ctx, signer)
-		if account == nil {
-			return sdkerrors.ErrUnauthorized
-		}
-
-		ibcAccount, ok := account.(types.IBCAccountI)
-		if !ok {
-			return sdkerrors.ErrUnauthorized
-		}
-
-		if types.GetIdentifier(ibcAccount.GetDestinationPort(), ibcAccount.GetDestinationChannel()) != identifier {
-			return sdkerrors.ErrUnauthorized
-		}
-	}
-
-	return nil
-}
-
-// RunMsg executes the message.
 // It tries to get the handler from router. And, if router exites, it will perform message.
-func (k Keeper) runMsg(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-	hander := k.router.Route(ctx, msg.Route())
-	if hander == nil {
+func (k Keeper) executeMsg(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+	handler := k.router.Route(ctx, msg.Route())
+	if handler == nil {
 		return nil, types.ErrInvalidRoute
 	}
 
-	return hander(ctx, msg)
+	return handler(ctx, msg)
 }
 
 // Compute the virtual tx hash that is used only internally.
@@ -268,26 +200,19 @@ func (k Keeper) ComputeVirtualTxHash(txBytes []byte, seq uint64) []byte {
 
 func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) error {
 	var data types.IBCAccountPacketData
-	// TODO: Remove the usage of global variable "ModuleCdc"
+
 	if err := types.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
 		return sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal interchain account packet data: %s", err.Error())
 	}
 
 	switch data.Type {
-	case types.Type_REGISTER:
-		_, err := k.registerIBCAccount(ctx, packet.SourcePort, packet.SourceChannel, packet.DestinationPort, packet.DestinationChannel, data.Data)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	case types.Type_RUNTX:
 		msgs, err := k.DeserializeTx(ctx, data.Data)
 		if err != nil {
 			return err
 		}
 
-		err = k.runTx(ctx, packet.DestinationPort, packet.DestinationChannel, msgs)
+		err = k.executeTx(ctx, packet.SourcePort, packet.DestinationPort, packet.DestinationChannel, msgs)
 		if err != nil {
 			return err
 		}
@@ -298,28 +223,22 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) error 
 	}
 }
 
-func (k Keeper) OnAcknowledgementPacket(ctx sdk.Context, packet channeltypes.Packet, data types.IBCAccountPacketData, ack types.IBCAccountPacketAcknowledgement) error {
-	switch ack.Type {
-	case types.Type_REGISTER:
-		if ack.Code == 0 {
-			if k.hook != nil {
-				k.hook.OnAccountCreated(ctx, packet.SourcePort, packet.SourceChannel, k.GenerateAddress(types.GetIdentifier(packet.DestinationPort, packet.DestinationChannel), data.Data))
-			}
+func (k Keeper) OnAcknowledgementPacket(ctx sdk.Context, packet channeltypes.Packet, data types.IBCAccountPacketData, ack channeltypes.Acknowledgement) error {
+	switch ack.Response.(type) {
+	case *channeltypes.Acknowledgement_Error:
+		if k.hook != nil {
+			k.hook.OnTxFailed(ctx, packet.SourcePort, packet.SourceChannel, k.ComputeVirtualTxHash(data.Data, packet.Sequence), data.Data)
 		}
 		return nil
-	case types.Type_RUNTX:
-		if ack.Code == 0 {
-			if k.hook != nil {
-				k.hook.OnTxSucceeded(ctx, packet.SourcePort, packet.SourceChannel, k.ComputeVirtualTxHash(data.Data, packet.Sequence), data.Data)
-			}
-		} else {
-			if k.hook != nil {
-				k.hook.OnTxFailed(ctx, packet.SourcePort, packet.SourceChannel, k.ComputeVirtualTxHash(data.Data, packet.Sequence), data.Data)
-			}
+	case *channeltypes.Acknowledgement_Result:
+		if k.hook != nil {
+			k.hook.OnTxSucceeded(ctx, packet.SourcePort, packet.SourceChannel, k.ComputeVirtualTxHash(data.Data, packet.Sequence), data.Data)
 		}
 		return nil
 	default:
-		panic("unknown type of acknowledgement")
+		// the acknowledgement succeeded on the receiving chain so nothing
+		// needs to be executed and no error needs to be returned
+		return nil
 	}
 }
 

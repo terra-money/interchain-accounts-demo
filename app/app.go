@@ -325,11 +325,9 @@ func New(
 	)
 	transferModule := transfer.NewAppModule(app.TransferKeeper)
 
-	app.ibcAccountKeeper = ibcaccountkeeper.NewKeeper(keys[ibcaccounttypes.MemStoreKey], appCodec, keys[ibcaccounttypes.StoreKey],
-		map[string]ibcaccounttypes.TxEncoder{
-			// register the tx encoder for cosmos-sdk
-			"cosmos-sdk": ibcaccountkeeper.SerializeCosmosTx(appCodec, interfaceRegistry),
-		}, app.IBCKeeper.ChannelKeeper, &app.IBCKeeper.PortKeeper,
+	app.ibcAccountKeeper = ibcaccountkeeper.NewKeeper(
+		keys[ibcaccounttypes.MemStoreKey], appCodec, keys[ibcaccounttypes.StoreKey],
+		app.IBCKeeper.ChannelKeeper, &app.IBCKeeper.PortKeeper,
 		app.AccountKeeper, scopedIbcAccountKeeper, app.Router(), app,
 	)
 	ibcAccountModule := ibcaccount.NewAppModule(app.ibcAccountKeeper)
@@ -618,10 +616,6 @@ func initParamsKeeper(appCodec codec.BinaryMarshaler, legacyAmino *codec.LegacyA
 	// this line is used by starport scaffolding # stargate/app/paramSubspace
 
 	return paramsKeeper
-}
-
-func (app *App) OnAccountCreated(ctx sdk.Context, sourcePort, sourceChannel string, address sdk.AccAddress) {
-	app.interTxKeeper.OnAccountCreated(ctx, sourcePort, sourceChannel, address)
 }
 
 func (*App) OnTxSucceeded(ctx sdk.Context, sourcePort, sourceChannel string, txHash []byte, txBytes []byte) {

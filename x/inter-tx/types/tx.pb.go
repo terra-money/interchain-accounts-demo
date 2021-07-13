@@ -33,11 +33,8 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 //MsgRegisterAccount is used to register an interchain account on a target chain
 type MsgRegisterAccount struct {
-	// the port by which the packet will be sent
-	SourcePort string `protobuf:"bytes,2,opt,name=source_port,json=sourcePort,proto3" json:"source_port,omitempty" yaml:"source_port"`
-	// the channel by which the packet will be sent
-	SourceChannel string `protobuf:"bytes,3,opt,name=source_channel,json=sourceChannel,proto3" json:"source_channel,omitempty" yaml:"source_channel"`
-	Owner         string `protobuf:"bytes,6,opt,name=owner,proto3" json:"owner,omitempty"`
+	Owner        string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	ConnectionId string `protobuf:"bytes,2,opt,name=connectionId,proto3" json:"connectionId,omitempty"`
 }
 
 func (m *MsgRegisterAccount) Reset()         { *m = MsgRegisterAccount{} }
@@ -111,14 +108,11 @@ var xxx_messageInfo_MsgRegisterAccountResponse proto.InternalMessageInfo
 
 // MsgSend is used to send coins from an interchain account to another account on the same chain
 type MsgSend struct {
-	// the port by which the packet will be sent
-	ChainType  string `protobuf:"bytes,1,opt,name=chain_type,json=chainType,proto3" json:"chain_type,omitempty" yaml:"chain_type"`
-	SourcePort string `protobuf:"bytes,2,opt,name=source_port,json=sourcePort,proto3" json:"source_port,omitempty" yaml:"source_port"`
-	// the channel by which the packet will be sent
-	SourceChannel string                                        `protobuf:"bytes,3,opt,name=source_channel,json=sourceChannel,proto3" json:"source_channel,omitempty" yaml:"source_channel"`
-	Sender        github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,6,opt,name=sender,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"sender,omitempty"`
-	ToAddress     github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,7,opt,name=to_address,json=toAddress,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"to_address,omitempty"`
-	Amount        github_com_cosmos_cosmos_sdk_types.Coins      `protobuf:"bytes,8,rep,name=amount,proto3,castrepeated=github.com/cosmos/cosmos-sdk/types.Coins" json:"amount"`
+	InterchainAccount string                                        `protobuf:"bytes,1,opt,name=interchain_account,json=interchainAccount,proto3" json:"interchain_account,omitempty"`
+	Owner             github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,2,opt,name=owner,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"owner,omitempty"`
+	ToAddress         string                                        `protobuf:"bytes,3,opt,name=to_address,json=toAddress,proto3" json:"to_address,omitempty"`
+	Amount            github_com_cosmos_cosmos_sdk_types.Coins      `protobuf:"bytes,4,rep,name=amount,proto3,castrepeated=github.com/cosmos/cosmos-sdk/types.Coins" json:"amount"`
+	ConnectionId      string                                        `protobuf:"bytes,5,opt,name=connectionId,proto3" json:"connectionId,omitempty"`
 }
 
 func (m *MsgSend) Reset()         { *m = MsgSend{} }
@@ -153,6 +147,41 @@ func (m *MsgSend) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_MsgSend proto.InternalMessageInfo
+
+func (m *MsgSend) GetInterchainAccount() string {
+	if m != nil {
+		return m.InterchainAccount
+	}
+	return ""
+}
+
+func (m *MsgSend) GetOwner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+	if m != nil {
+		return m.Owner
+	}
+	return nil
+}
+
+func (m *MsgSend) GetToAddress() string {
+	if m != nil {
+		return m.ToAddress
+	}
+	return ""
+}
+
+func (m *MsgSend) GetAmount() github_com_cosmos_cosmos_sdk_types.Coins {
+	if m != nil {
+		return m.Amount
+	}
+	return nil
+}
+
+func (m *MsgSend) GetConnectionId() string {
+	if m != nil {
+		return m.ConnectionId
+	}
+	return ""
+}
 
 // MsgSendResponse defines the Msg/Send response type.
 type MsgSendResponse struct {
@@ -201,40 +230,35 @@ func init() {
 func init() { proto.RegisterFile("intertx/tx.proto", fileDescriptor_cf629f09c7954014) }
 
 var fileDescriptor_cf629f09c7954014 = []byte{
-	// 517 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x53, 0x3f, 0x8f, 0xd3, 0x30,
-	0x14, 0x4f, 0x28, 0xf4, 0x8f, 0x8f, 0x3f, 0x77, 0xd6, 0x1d, 0xca, 0x05, 0x94, 0x9c, 0xc2, 0xd2,
-	0xa5, 0x31, 0x2d, 0x08, 0xa4, 0x9b, 0x68, 0x6f, 0x42, 0xa2, 0x52, 0x15, 0x98, 0x58, 0xaa, 0xc4,
-	0xb1, 0xd2, 0x88, 0xd6, 0x8e, 0x62, 0xf7, 0x68, 0x3f, 0x01, 0x8c, 0x7c, 0x84, 0x9b, 0x59, 0xf8,
-	0x16, 0xe8, 0xc6, 0x8e, 0x4c, 0x01, 0xb5, 0x0b, 0x73, 0x47, 0x26, 0xe4, 0xd8, 0x15, 0x85, 0x4a,
-	0x08, 0xb1, 0xdc, 0xe4, 0xf7, 0x7e, 0x3f, 0xff, 0x9e, 0xdf, 0xf3, 0x7b, 0x0f, 0xec, 0xa7, 0x54,
-	0x90, 0x5c, 0xcc, 0x90, 0x98, 0xf9, 0x59, 0xce, 0x04, 0x83, 0x35, 0x8d, 0xd8, 0x87, 0x09, 0x4b,
-	0x58, 0x89, 0x21, 0x69, 0x29, 0xda, 0x76, 0xd3, 0x08, 0x23, 0xcc, 0x72, 0x82, 0xf0, 0x38, 0x25,
-	0x54, 0xa0, 0xf3, 0xb6, 0xb6, 0xf4, 0x05, 0x07, 0x33, 0x3e, 0x61, 0x1c, 0x45, 0x21, 0x27, 0xe8,
-	0xbc, 0x1d, 0x11, 0x11, 0xb6, 0x11, 0x66, 0x29, 0x55, 0xbc, 0xf7, 0xc9, 0x04, 0xb0, 0xcf, 0x93,
-	0x80, 0x24, 0x29, 0x17, 0x24, 0xef, 0x62, 0xcc, 0xa6, 0x54, 0xc0, 0xa7, 0x60, 0x8f, 0xb3, 0x69,
-	0x8e, 0xc9, 0x30, 0x63, 0xb9, 0xb0, 0xae, 0x9d, 0x98, 0xcd, 0x46, 0xef, 0xee, 0xba, 0x70, 0xe1,
-	0x3c, 0x9c, 0x8c, 0x4f, 0xbd, 0x2d, 0xd2, 0x0b, 0x80, 0xf2, 0x06, 0x2c, 0x17, 0xf0, 0x19, 0xb8,
-	0xad, 0x39, 0x3c, 0x0a, 0x29, 0x25, 0x63, 0xab, 0x52, 0x6a, 0x8f, 0xd7, 0x85, 0x7b, 0xf4, 0x9b,
-	0x56, 0xf3, 0x5e, 0x70, 0x4b, 0x01, 0x67, 0xca, 0x87, 0x87, 0xe0, 0x06, 0x7b, 0x4b, 0x49, 0x6e,
-	0x55, 0xa5, 0x30, 0x50, 0xce, 0x69, 0xfd, 0xfd, 0x85, 0x6b, 0x7c, 0xbf, 0x70, 0x0d, 0xef, 0x3e,
-	0xb0, 0x77, 0x13, 0x0e, 0x08, 0xcf, 0x18, 0xe5, 0xc4, 0xfb, 0x5c, 0x01, 0xb5, 0x3e, 0x4f, 0x5e,
-	0x12, 0x1a, 0xc3, 0xc7, 0x00, 0xe0, 0x51, 0x98, 0xd2, 0xa1, 0x98, 0x67, 0xc4, 0x32, 0xcb, 0x3c,
-	0x8e, 0xd6, 0x85, 0x7b, 0xa0, 0xf2, 0xf8, 0xc5, 0x79, 0x41, 0xa3, 0x74, 0x5e, 0xcd, 0x33, 0x72,
-	0x95, 0xa5, 0x3f, 0x07, 0x55, 0x4e, 0x68, 0xac, 0x6b, 0xbf, 0xd9, 0x6b, 0xff, 0x28, 0xdc, 0x56,
-	0x92, 0x8a, 0xd1, 0x34, 0xf2, 0x31, 0x9b, 0x20, 0xdd, 0x4b, 0x75, 0xb4, 0x78, 0xfc, 0x06, 0xc9,
-	0xec, 0xb9, 0xdf, 0xc5, 0xb8, 0x1b, 0xc7, 0x39, 0xe1, 0x3c, 0xd0, 0x01, 0xe0, 0x00, 0x00, 0xc1,
-	0x86, 0xa1, 0x42, 0xad, 0xda, 0xff, 0x86, 0x6b, 0x08, 0xa6, 0x4d, 0x88, 0x41, 0x35, 0x9c, 0xc8,
-	0xbf, 0xb6, 0xea, 0x27, 0x95, 0xe6, 0x5e, 0xe7, 0xd8, 0x57, 0x42, 0x5f, 0x8e, 0x96, 0xaf, 0x47,
-	0xcb, 0x3f, 0x63, 0x29, 0xed, 0x3d, 0xbc, 0x2c, 0x5c, 0xe3, 0xe3, 0x57, 0xb7, 0xf9, 0x0f, 0x8f,
-	0x49, 0x01, 0x0f, 0x74, 0xe8, 0xad, 0x36, 0x1f, 0x80, 0x3b, 0xba, 0x8f, 0x9b, 0xde, 0x76, 0xde,
-	0x99, 0xa0, 0xd2, 0xe7, 0x09, 0x7c, 0x01, 0xea, 0x9b, 0xf6, 0xc3, 0x7b, 0xbe, 0x5e, 0x10, 0x7f,
-	0x77, 0x28, 0xec, 0x07, 0x7f, 0x21, 0x37, 0x51, 0x61, 0x07, 0x5c, 0x2f, 0xa7, 0x65, 0x7f, 0xfb,
-	0xb2, 0x44, 0x6c, 0xeb, 0x4f, 0x64, 0xa3, 0xe9, 0x0d, 0x2e, 0x97, 0x8e, 0xb9, 0x58, 0x3a, 0xe6,
-	0xb7, 0xa5, 0x63, 0x7e, 0x58, 0x39, 0xc6, 0x62, 0xe5, 0x18, 0x5f, 0x56, 0x8e, 0xf1, 0xfa, 0xc9,
-	0x6e, 0xc9, 0x65, 0x90, 0x72, 0xbe, 0x5a, 0xa1, 0x7a, 0x9b, 0xa3, 0x99, 0x42, 0x5b, 0x72, 0xd5,
-	0xe5, 0x37, 0x44, 0xd5, 0x72, 0x1d, 0x1f, 0xfd, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x52, 0xa8, 0xfb,
-	0x93, 0x02, 0x04, 0x00, 0x00,
+	// 448 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0xbf, 0x8e, 0xd3, 0x40,
+	0x10, 0xc6, 0xed, 0xcb, 0xfd, 0x5d, 0x4e, 0xe2, 0x6e, 0x75, 0x85, 0x31, 0x60, 0x9f, 0x4c, 0x93,
+	0xc6, 0xbb, 0x38, 0x48, 0x14, 0x74, 0x09, 0x05, 0x42, 0x22, 0x12, 0x32, 0x0d, 0xa2, 0x39, 0xd9,
+	0xeb, 0x95, 0x6f, 0x05, 0xd9, 0x89, 0xbc, 0x7b, 0x47, 0x78, 0x02, 0x28, 0x79, 0x84, 0xb4, 0xf0,
+	0x24, 0x29, 0x53, 0x52, 0x05, 0x94, 0x34, 0x3c, 0x03, 0x15, 0xb2, 0x77, 0xad, 0x00, 0x96, 0xd0,
+	0x55, 0x5e, 0x7f, 0xdf, 0xec, 0xec, 0xcc, 0x6f, 0x06, 0x9d, 0x08, 0xa9, 0x79, 0xa5, 0x67, 0x54,
+	0xcf, 0xc8, 0xb4, 0x02, 0x0d, 0xf8, 0xc0, 0x2a, 0xfe, 0x59, 0x09, 0x25, 0x34, 0x1a, 0xad, 0x4f,
+	0xc6, 0xf6, 0x43, 0x91, 0x33, 0xca, 0xa0, 0xe2, 0x94, 0xbd, 0x13, 0x5c, 0x6a, 0x7a, 0x9d, 0xd8,
+	0x93, 0x0d, 0x08, 0x18, 0xa8, 0x09, 0x28, 0x9a, 0x67, 0x8a, 0xd3, 0xeb, 0x24, 0xe7, 0x3a, 0x4b,
+	0x28, 0x03, 0x21, 0x8d, 0x1f, 0xbd, 0x46, 0x78, 0xac, 0xca, 0x94, 0x97, 0x42, 0x69, 0x5e, 0x0d,
+	0x19, 0x83, 0x2b, 0xa9, 0xf1, 0x19, 0xda, 0x83, 0xf7, 0x92, 0x57, 0x9e, 0x7b, 0xee, 0xf6, 0x8f,
+	0x52, 0xf3, 0x83, 0x23, 0x74, 0xcc, 0x40, 0x4a, 0xce, 0xb4, 0x00, 0xf9, 0xbc, 0xf0, 0x76, 0x1a,
+	0xf3, 0x2f, 0xed, 0xc9, 0xe1, 0xa7, 0x79, 0xe8, 0xfc, 0x9c, 0x87, 0x4e, 0x74, 0x0f, 0xf9, 0xdd,
+	0xcc, 0x29, 0x57, 0x53, 0x90, 0x8a, 0x47, 0x5f, 0x76, 0xd0, 0xc1, 0x58, 0x95, 0xaf, 0xb8, 0x2c,
+	0x70, 0x8c, 0x70, 0xd3, 0x25, 0xbb, 0xcc, 0x84, 0xbc, 0xc8, 0x4c, 0xa4, 0x7d, 0xfa, 0x74, 0xeb,
+	0xb4, 0xc5, 0x3d, 0x6b, 0x8b, 0xab, 0xdf, 0x3f, 0x1e, 0x25, 0xbf, 0x56, 0x61, 0x5c, 0x0a, 0x7d,
+	0x79, 0x95, 0x13, 0x06, 0x13, 0x6a, 0x1b, 0x36, 0x9f, 0x58, 0x15, 0x6f, 0xa9, 0xfe, 0x30, 0xe5,
+	0x8a, 0x0c, 0x19, 0x1b, 0x16, 0x45, 0xc5, 0x95, 0x6a, 0xfb, 0xb9, 0x8f, 0x90, 0x86, 0x8b, 0xcc,
+	0x88, 0x5e, 0xaf, 0x79, 0xef, 0x48, 0x83, 0x8d, 0xc2, 0x0c, 0xed, 0x67, 0x93, 0xa6, 0x94, 0xdd,
+	0xf3, 0x5e, 0xff, 0xd6, 0xe0, 0x0e, 0x31, 0x39, 0x49, 0xcd, 0x92, 0x58, 0x96, 0xe4, 0x29, 0x08,
+	0x39, 0x7a, 0xb8, 0x58, 0x85, 0xce, 0xd7, 0xef, 0x61, 0xff, 0x06, 0x75, 0xd4, 0x17, 0x54, 0x6a,
+	0x53, 0x77, 0x98, 0xee, 0x75, 0x99, 0x46, 0xa7, 0xe8, 0xb6, 0x45, 0xd5, 0xe2, 0x1b, 0x7c, 0x74,
+	0x51, 0x6f, 0xac, 0x4a, 0xfc, 0x02, 0x1d, 0xb6, 0x84, 0xf1, 0x5d, 0x62, 0x77, 0x85, 0x74, 0xb9,
+	0xfb, 0x0f, 0xfe, 0x63, 0xb6, 0x59, 0xf1, 0x00, 0xed, 0x36, 0x03, 0x39, 0xf9, 0x33, 0xb8, 0x56,
+	0x7c, 0xef, 0x5f, 0xa5, 0xbd, 0x33, 0x7a, 0xb9, 0x58, 0x07, 0xee, 0x72, 0x1d, 0xb8, 0x3f, 0xd6,
+	0x81, 0xfb, 0x79, 0x13, 0x38, 0xcb, 0x4d, 0xe0, 0x7c, 0xdb, 0x04, 0xce, 0x9b, 0xc7, 0x5d, 0x18,
+	0xdb, 0x61, 0xc6, 0x76, 0xcc, 0x8a, 0xce, 0x8c, 0x1a, 0xd7, 0x5b, 0x5f, 0x03, 0xca, 0xf7, 0x9b,
+	0xcd, 0x7c, 0xf4, 0x3b, 0x00, 0x00, 0xff, 0xff, 0x48, 0x36, 0x63, 0x4e, 0x0d, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -373,26 +397,19 @@ func (m *MsgRegisterAccount) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ConnectionId) > 0 {
+		i -= len(m.ConnectionId)
+		copy(dAtA[i:], m.ConnectionId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.ConnectionId)))
+		i--
+		dAtA[i] = 0x12
+	}
 	if len(m.Owner) > 0 {
 		i -= len(m.Owner)
 		copy(dAtA[i:], m.Owner)
 		i = encodeVarintTx(dAtA, i, uint64(len(m.Owner)))
 		i--
-		dAtA[i] = 0x32
-	}
-	if len(m.SourceChannel) > 0 {
-		i -= len(m.SourceChannel)
-		copy(dAtA[i:], m.SourceChannel)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.SourceChannel)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.SourcePort) > 0 {
-		i -= len(m.SourcePort)
-		copy(dAtA[i:], m.SourcePort)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.SourcePort)))
-		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -440,6 +457,13 @@ func (m *MsgSend) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.ConnectionId) > 0 {
+		i -= len(m.ConnectionId)
+		copy(dAtA[i:], m.ConnectionId)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.ConnectionId)))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.Amount) > 0 {
 		for iNdEx := len(m.Amount) - 1; iNdEx >= 0; iNdEx-- {
 			{
@@ -451,7 +475,7 @@ func (m *MsgSend) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 				i = encodeVarintTx(dAtA, i, uint64(size))
 			}
 			i--
-			dAtA[i] = 0x42
+			dAtA[i] = 0x22
 		}
 	}
 	if len(m.ToAddress) > 0 {
@@ -459,33 +483,19 @@ func (m *MsgSend) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.ToAddress)
 		i = encodeVarintTx(dAtA, i, uint64(len(m.ToAddress)))
 		i--
-		dAtA[i] = 0x3a
-	}
-	if len(m.Sender) > 0 {
-		i -= len(m.Sender)
-		copy(dAtA[i:], m.Sender)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.Sender)))
-		i--
-		dAtA[i] = 0x32
-	}
-	if len(m.SourceChannel) > 0 {
-		i -= len(m.SourceChannel)
-		copy(dAtA[i:], m.SourceChannel)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.SourceChannel)))
-		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.SourcePort) > 0 {
-		i -= len(m.SourcePort)
-		copy(dAtA[i:], m.SourcePort)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.SourcePort)))
+	if len(m.Owner) > 0 {
+		i -= len(m.Owner)
+		copy(dAtA[i:], m.Owner)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.Owner)))
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.ChainType) > 0 {
-		i -= len(m.ChainType)
-		copy(dAtA[i:], m.ChainType)
-		i = encodeVarintTx(dAtA, i, uint64(len(m.ChainType)))
+	if len(m.InterchainAccount) > 0 {
+		i -= len(m.InterchainAccount)
+		copy(dAtA[i:], m.InterchainAccount)
+		i = encodeVarintTx(dAtA, i, uint64(len(m.InterchainAccount)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -532,15 +542,11 @@ func (m *MsgRegisterAccount) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.SourcePort)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.SourceChannel)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
 	l = len(m.Owner)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
+	}
+	l = len(m.ConnectionId)
 	if l > 0 {
 		n += 1 + l + sovTx(uint64(l))
 	}
@@ -562,19 +568,11 @@ func (m *MsgSend) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = len(m.ChainType)
+	l = len(m.InterchainAccount)
 	if l > 0 {
 		n += 1 + l + sovTx(uint64(l))
 	}
-	l = len(m.SourcePort)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.SourceChannel)
-	if l > 0 {
-		n += 1 + l + sovTx(uint64(l))
-	}
-	l = len(m.Sender)
+	l = len(m.Owner)
 	if l > 0 {
 		n += 1 + l + sovTx(uint64(l))
 	}
@@ -587,6 +585,10 @@ func (m *MsgSend) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovTx(uint64(l))
 		}
+	}
+	l = len(m.ConnectionId)
+	if l > 0 {
+		n += 1 + l + sovTx(uint64(l))
 	}
 	return n
 }
@@ -635,71 +637,7 @@ func (m *MsgRegisterAccount) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: MsgRegisterAccount: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourcePort", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SourcePort = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourceChannel", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SourceChannel = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 6:
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
 			}
@@ -730,6 +668,38 @@ func (m *MsgRegisterAccount) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Owner = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConnectionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ConnectionId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -833,7 +803,7 @@ func (m *MsgSend) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ChainType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field InterchainAccount", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -861,13 +831,13 @@ func (m *MsgSend) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ChainType = string(dAtA[iNdEx:postIndex])
+			m.InterchainAccount = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourcePort", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
 			}
-			var stringLen uint64
+			var byteLen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowTx
@@ -877,27 +847,29 @@ func (m *MsgSend) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				byteLen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if byteLen < 0 {
 				return ErrInvalidLengthTx
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + byteLen
 			if postIndex < 0 {
 				return ErrInvalidLengthTx
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SourcePort = string(dAtA[iNdEx:postIndex])
+			m.Owner = append(m.Owner[:0], dAtA[iNdEx:postIndex]...)
+			if m.Owner == nil {
+				m.Owner = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourceChannel", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ToAddress", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -925,77 +897,9 @@ func (m *MsgSend) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SourceChannel = string(dAtA[iNdEx:postIndex])
+			m.ToAddress = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sender", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Sender = append(m.Sender[:0], dAtA[iNdEx:postIndex]...)
-			if m.Sender == nil {
-				m.Sender = []byte{}
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ToAddress", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTx
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTx
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTx
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ToAddress = append(m.ToAddress[:0], dAtA[iNdEx:postIndex]...)
-			if m.ToAddress == nil {
-				m.ToAddress = []byte{}
-			}
-			iNdEx = postIndex
-		case 8:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Amount", wireType)
 			}
@@ -1028,6 +932,38 @@ func (m *MsgSend) Unmarshal(dAtA []byte) error {
 			if err := m.Amount[len(m.Amount)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConnectionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTx
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTx
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTx
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ConnectionId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

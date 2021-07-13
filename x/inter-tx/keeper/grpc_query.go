@@ -5,31 +5,20 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/cosmos/interchain-accounts/x/inter-tx/types"
 )
 
 // IBCAccountFromAddress implements the Query/IBCAccount gRPC method
 func (k Keeper) IBCAccountFromAddress(ctx context.Context, req *types.QueryIBCAccountFromAddressRequest) (*types.QueryIBCAccountFromAddressResponse, error) {
-	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, "empty request")
-	}
-
-	if req.Port == "" {
-		return nil, status.Error(codes.InvalidArgument, "port cannot be empty")
-	}
-
-	if req.Channel == "" {
-		return nil, status.Error(codes.InvalidArgument, "channel cannot be empty")
-	}
-
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	ibcAccount, err := k.GetIBCAccount(sdkCtx, req.Port, req.Channel, req.Address)
+
+	portId := k.iaKeeper.GeneratePortId(req.Address.String(), req.ConnectionId)
+	addr, err := k.iaKeeper.GetInterchainAccountAddress(sdkCtx, portId)
 	if err != nil {
 		return nil, err
 	}
+
+	ibcAccount := types.QueryIBCAccountFromAddressResponse{Address: addr}
 
 	return &ibcAccount, nil
 }

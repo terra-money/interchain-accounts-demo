@@ -1,8 +1,8 @@
 package ibc_account
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/cosmos/interchain-accounts/x/ibc-account/client/cli"
 
@@ -72,7 +72,6 @@ func (AppModuleBasic) RegisterInterfaces(registry codectypes.InterfaceRegistry) 
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the ibc-account module.
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
-	types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx))
 }
 
 type AppModule struct {
@@ -104,7 +103,7 @@ func (AppModule) QuerierRoute() string {
 
 // LegacyQuerierHandler implements the AppModule interface
 func (am AppModule) LegacyQuerierHandler(legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
-	return keeper.NewQuerier(am.keeper, legacyQuerierCdc)
+	return nil
 }
 
 // RegisterServices registers a GRPC query service to respond to the
@@ -170,11 +169,7 @@ func (am AppModule) OnChanOpenAck(
 	channelID string,
 	counterpartyVersion string,
 ) error {
-	// TODO
-	// if counterpartyVersion != types.Version {
-	//	return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid counterparty version: %s, expected %s", counterpartyVersion, "ics20-1")
-	// }
-	return nil
+	return am.keeper.OnChanOpenAck(ctx, portID, channelID, counterpartyVersion)
 }
 
 func (am AppModule) OnChanOpenConfirm(
@@ -182,7 +177,7 @@ func (am AppModule) OnChanOpenConfirm(
 	portID,
 	channelID string,
 ) error {
-	return nil
+	return am.keeper.OnChanOpenConfirm(ctx, portID, channelID)
 }
 
 func (am AppModule) OnChanCloseInit(
@@ -191,7 +186,7 @@ func (am AppModule) OnChanCloseInit(
 	channelID string,
 ) error {
 	// Disallow user-initiated channel closing for interchain account channels
-	return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "user cannot close channel")
+	return nil
 }
 
 func (am AppModule) OnChanCloseConfirm(
@@ -199,53 +194,30 @@ func (am AppModule) OnChanCloseConfirm(
 	portID,
 	channelID string,
 ) error {
-	return nil
+	return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "user cannot close channel")
 }
 
 func (am AppModule) OnRecvPacket(
 	ctx sdk.Context,
 	packet channeltypes.Packet,
 ) (*sdk.Result, []byte, error) {
+	var ack channeltypes.Acknowledgement
 	var data types.IBCAccountPacketData
-	// TODO: Remove the usage of global variable "ModuleCdc"
 	if err := types.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
-		return nil, nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal interchain account packet data: %s", err.Error())
+		return nil, nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal ICS-27 interchain account packet data: %s", err.Error())
 	}
 
 	err := am.keeper.OnRecvPacket(ctx, packet)
-
-	switch data.Type {
-	case types.Type_REGISTER:
-		acknowledgement := types.IBCAccountPacketAcknowledgement{
-			ChainID: ctx.ChainID(),
-		}
-		if err == nil {
-			acknowledgement.Code = 0
-		} else {
-			acknowledgement.Code = 1
-			acknowledgement.Error = err.Error()
-		}
-
-		return &sdk.Result{
-			Events: ctx.EventManager().Events().ToABCIEvents(),
-		}, acknowledgement.GetBytes(), nil
-	case types.Type_RUNTX:
-		acknowledgement := types.IBCAccountPacketAcknowledgement{
-			ChainID: ctx.ChainID(),
-		}
-		if err == nil {
-			acknowledgement.Code = 0
-		} else {
-			acknowledgement.Code = 1
-			acknowledgement.Error = err.Error()
-		}
-
-		return &sdk.Result{
-			Events: ctx.EventManager().Events().ToABCIEvents(),
-		}, acknowledgement.GetBytes(), nil
-	default:
-		return nil, nil, types.ErrUnknownPacketData
+	if err != nil {
+		ack = channeltypes.NewErrorAcknowledgement(fmt.Sprintf("cannot unmarshal interchain account packet data: %s", err.Error()))
 	}
+
+	bz := []byte("")
+	ack = channeltypes.NewResultAcknowledgement(bz)
+
+	return &sdk.Result{
+		Events: ctx.EventManager().Events().ToABCIEvents(),
+	}, ack.GetBytes(), nil
 }
 
 func (am AppModule) OnAcknowledgementPacket(
@@ -253,7 +225,8 @@ func (am AppModule) OnAcknowledgementPacket(
 	packet channeltypes.Packet,
 	acknowledgement []byte,
 ) (*sdk.Result, error) {
-	var ack types.IBCAccountPacketAcknowledgement
+	var ack channeltypes.Acknowledgement
+
 	if err := types.ModuleCdc.UnmarshalJSON(acknowledgement, &ack); err != nil {
 		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal ICS-27 interchain account packet acknowledgment: %v", err)
 	}
@@ -265,8 +238,6 @@ func (am AppModule) OnAcknowledgementPacket(
 	if err := am.keeper.OnAcknowledgementPacket(ctx, packet, data, ack); err != nil {
 		return nil, err
 	}
-
-	// TODO: Add events.
 
 	return &sdk.Result{
 		Events: ctx.EventManager().Events().ToABCIEvents(),

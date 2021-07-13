@@ -5,10 +5,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 	channeltypes "github.com/cosmos/cosmos-sdk/x/ibc/core/04-channel/types"
-	porttypes "github.com/cosmos/cosmos-sdk/x/ibc/core/05-port/types"
 	host "github.com/cosmos/cosmos-sdk/x/ibc/core/24-host"
-
-	"github.com/cosmos/interchain-accounts/x/ibc-account/types"
 )
 
 func (k Keeper) OnChanOpenInit(
@@ -21,16 +18,8 @@ func (k Keeper) OnChanOpenInit(
 	counterparty channeltypes.Counterparty,
 	version string,
 ) error {
-	// Require portID is the portID transfer module is bound to
-	boundPort := k.GetPort(ctx)
-	if boundPort != portID {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
-	}
-
-	if version != types.Version {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid version: %s, expected %s", version, "ics20-1")
-	}
-
+	//TODO:
+	// check version string
 	if order != channeltypes.ORDERED {
 		return sdkerrors.Wrapf(channeltypes.ErrInvalidChannelOrdering, "invalid channel ordering: %s, expected %s", order.String(), channeltypes.ORDERED.String())
 	}
@@ -43,6 +32,9 @@ func (k Keeper) OnChanOpenInit(
 	return nil
 }
 
+// register account (if it doesn't exist)
+// check if counterpary version is the same
+// TODO: remove ics27-1 hardcoded
 func (k Keeper) OnChanOpenTry(
 	ctx sdk.Context,
 	order channeltypes.Order,
@@ -54,15 +46,6 @@ func (k Keeper) OnChanOpenTry(
 	version,
 	counterpartyVersion string,
 ) error {
-	boundPort := k.GetPort(ctx)
-	if boundPort != portID {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
-	}
-
-	if version != types.Version {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid version: %s, expected %s", version, "ics20-1")
-	}
-
 	if order != channeltypes.ORDERED {
 		return sdkerrors.Wrapf(channeltypes.ErrInvalidChannelOrdering, "invalid channel ordering: %s, expected %s", order.String(), channeltypes.ORDERED.String())
 	}
@@ -77,5 +60,48 @@ func (k Keeper) OnChanOpenTry(
 		return sdkerrors.Wrap(channeltypes.ErrChannelCapabilityNotFound, err.Error())
 	}
 
+	// Register interchain account if it does not already exist
+	_, _ = k.RegisterInterchainAccount(ctx, counterparty.PortId)
 	return nil
 }
+
+func (k Keeper) OnChanOpenAck(
+	ctx sdk.Context,
+	portID,
+	channelID string,
+	counterpartyVersion string,
+) error {
+	k.SetActiveChannel(ctx, portID, channelID)
+
+	return nil
+}
+
+// Set active channel
+func (k Keeper) OnChanOpenConfirm(
+	ctx sdk.Context,
+	portID,
+	channelID string,
+) error {
+
+	return nil
+}
+
+// May want to use these for re-opening a channel when it is closed
+//// OnChanCloseInit implements the IBCModule interface
+//func (am AppModule) OnChanCloseInit(
+//	ctx sdk.Context,
+//	portID,
+//	channelID string,
+//) error {
+//	// Disallow user-initiated channel closing for transfer channels
+//	return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "user cannot close channel")
+//}
+
+//// OnChanCloseConfirm implements the IBCModule interface
+//func (am AppModule) OnChanCloseConfirm(
+//	ctx sdk.Context,
+//	portID,
+//	channelID string,
+//) error {
+//	return nil
+//}

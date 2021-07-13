@@ -20,33 +20,20 @@ message MsgRegisterAccount {
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
-  // the port by which the packet will be sent
-  string source_port = 2 [(gogoproto.moretags) = "yaml:\"source_port\""];
-
-  // the channel by which the packet will be sent
-  string source_channel = 3 [(gogoproto.moretags) = "yaml:\"source_channel\""];
-
-  string owner=6;
+  string owner = 1;
+  string connectionId = 2;
 }
 
 message MsgRegisterAccountResponse {}
 
 // MsgSend is used to send coins from an interchain account to another account on the same chain
 message MsgSend {
-  option (gogoproto.equal)           = false;
-  option (gogoproto.goproto_getters) = false;
-
-  // the port by which the packet will be sent
-  string chain_type = 1 [(gogoproto.moretags) = "yaml:\"chain_type\""];
-  string source_port = 2 [(gogoproto.moretags) = "yaml:\"source_port\""];
-
-  // the channel by which the packet will be sent
-  string source_channel = 3 [(gogoproto.moretags) = "yaml:\"source_channel\""];
-
-  bytes   sender                    = 6 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"];
-  bytes   to_address                      = 7 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"];
-  repeated cosmos.base.v1beta1.Coin amount = 8
+  string   interchain_account              = 1;
+  bytes    owner                    = 2 [(gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress"];
+  string   to_address                      = 3;
+  repeated cosmos.base.v1beta1.Coin amount = 4
       [(gogoproto.nullable) = false, (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"];
+  string  connectionId = 5;
 }
 
 // MsgSendResponse defines the Msg/Send response type.
