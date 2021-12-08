@@ -1,11 +1,8 @@
 package cli
 
 import (
-	"context"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/interchain-accounts/x/inter-tx/types"
 	"github.com/spf13/cobra"
 )
@@ -27,24 +24,24 @@ func GetQueryCmd() *cobra.Command {
 // getIBCAccountCmd builds a cobra command to query for an interchain account registered on this chain
 func getIBCAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "ibcaccount [account] [connection] ",
-		Args: cobra.ExactArgs(2),
+		Use:  "interchainaccounts [account] [connectionId] [counterpartyConnectionId]",
+		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			acc, err := sdk.AccAddressFromBech32(args[0])
-			if err != nil {
-				return err
-			}
-
+			owner := args[0]
 			connectionId := args[1]
+			counterpartyConnectionId := args[2]
 
 			queryClient := types.NewQueryClient(clientCtx)
 
-			res, err := queryClient.IBCAccountFromAddress(context.Background(), &types.QueryIBCAccountFromAddressRequest{Address: acc, ConnectionId: connectionId})
+			res, err := queryClient.InterchainAccountFromAddress(
+				cmd.Context(),
+				&types.QueryInterchainAccountFromAddressRequest{Owner: owner, ConnectionId: connectionId, CounterpartyConnectionId: counterpartyConnectionId},
+			)
 			if err != nil {
 				return err
 			}
