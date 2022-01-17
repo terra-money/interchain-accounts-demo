@@ -32,7 +32,7 @@ func (k msgServer) RegisterAccount(goCtx context.Context, msg *types.MsgRegister
 		return nil, err
 	}
 
-	if err := k.RegisterInterchainAccount(ctx, acc, msg.ConnectionId, msg.CounterpartyConnectionId); err != nil {
+	if err := k.RegisterInterchainAccount(ctx, acc, msg.ConnectionId); err != nil {
 		return nil, err
 	}
 
@@ -42,7 +42,7 @@ func (k msgServer) RegisterAccount(goCtx context.Context, msg *types.MsgRegister
 // Send implements the Msg/Send interface
 func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSendResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
-	err := k.TrySendCoins(ctx, msg.Owner, msg.InterchainAccount, msg.ToAddress, msg.Amount, msg.ConnectionId, msg.CounterpartyConnectionId)
+	err := k.TrySendCoins(ctx, msg.Owner, msg.InterchainAccount, msg.ToAddress, msg.Amount)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSe
 func (k msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*types.MsgDelegateResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	portID, err := icatypes.GeneratePortID(msg.Owner.String(), msg.ConnectionId, msg.CounterpartyConnectionId)
+	portID, err := icatypes.NewControllerPortID(msg.Owner.String())
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,10 @@ func (k msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*typ
 		Data: data,
 	}
 
-	_, err = k.icaControllerKeeper.TrySendTx(ctx, chanCap, portID, packetData)
+	// timeoutTimestamp set to max value with the unsigned bit shifted to sastisfy hermes timestamp conversion
+	// it is the responsibility of the auth module developer to ensure an appropriate timeout timestamp
+	timeoutTimestamp := ^uint64(0) >> 1
+	_, err = k.icaControllerKeeper.TrySendTx(ctx, chanCap, portID, packetData, timeoutTimestamp)
 	if err != nil {
 		return nil, err
 	}

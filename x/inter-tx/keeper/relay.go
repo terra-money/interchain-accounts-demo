@@ -17,10 +17,8 @@ func (keeper Keeper) TrySendCoins(
 	fromAddr,
 	toAddr string,
 	amt sdk.Coins,
-	connectionID string,
-	counterpartyConnectionID string,
 ) error {
-	portID, err := icatypes.GeneratePortID(owner.String(), connectionID, counterpartyConnectionID)
+	portID, err := icatypes.NewControllerPortID(owner.String())
 	if err != nil {
 		return err
 	}
@@ -51,7 +49,10 @@ func (keeper Keeper) TrySendCoins(
 		Data: data,
 	}
 
-	_, err = keeper.icaControllerKeeper.TrySendTx(ctx, chanCap, portID, packetData)
+	// timeoutTimestamp set to max value with the unsigned bit shifted to sastisfy hermes timestamp conversion
+	// it is the responsibility of the auth module developer to ensure an appropriate timeout timestamp
+	timeoutTimestamp := ^uint64(0) >> 1
+	_, err = keeper.icaControllerKeeper.TrySendTx(ctx, chanCap, portID, packetData, timeoutTimestamp)
 
 	return err
 }
