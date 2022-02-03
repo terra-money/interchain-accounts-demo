@@ -1,86 +1,143 @@
 # Interchain Accounts
 
-### Warning 
-> Beware of dragons!</br></br>
-> The interchain accounts module is currently under development and has been moved to the `ibc-go` repo [here](https://github.com/cosmos/ibc-go/tree/main/modules/apps/27-interchain-accounts). Interchain Accounts is aiming to release in January 2022.</br></br>
-> This repo aims to demonstrate demo modules that utilize interchain accounts and serve as a developer guide for teams aiming to use interchain accounts functionality.</br></br>
-> The existing demo outlined below will be updated to coincide with the interchain accounts release.</br>
+## Overview 
+
+The following repository contains a basic example of an Interchain Accounts authentication module and serves as a developer guide for teams that wish to use interchain accounts functionality.
+
+The Interchain Accounts module is currently under active development and has been moved to the `ibc-go` repository [here](https://github.com/cosmos/ibc-go/tree/main/modules/apps/27-interchain-accounts). Interchain Accounts is aiming to release in Q1 2022.
+
+This repository will be updated regularly to consume pre-release versions of `ibc-go` equipped with the Interchain Accounts module.
 
 ### Developer Documentation
 
-> Coming soon! 
+Interchain Accounts developer docs can be found on the IBC documentation website.
 
-## Local Demo
+https://ibc.cosmos.network/main/app-modules/interchain-accounts/overview.html
 
-### Setup
+## Setup
+
+1. Clone this repository and build the application binary
 
 ```bash
-# Clone this repository and build
 git clone https://github.com/cosmos/interchain-accounts.git
 cd interchain-accounts
+
 make install 
-
-# Hermes Relayer
-# [Hermes](https://hermes.informal.systems/) is a Rust implementation of a relayer for the [Inter-Blockchain Communication (IBC)](https://ibcprotocol.org/) protocol.
-#
-# Currently supported by Hermes v0.9.0
-# 
-# Alternatively set a custom binary path using $HERMES_BINARY in /network/hermes/variables.sh
-cargo install --version 0.9.0 ibc-relayer-cli --bin hermes --locked
-
-# Bootstrap two local chains & create a connection using the hermes relayer
-make init
-
-# Wait for the ibc connection & channel handshake to complete and the relayer to start
 ```
 
-### Demo
+2. Download and install an IBC relayer. *The following demo is supported by Hermes v0.9.0, and this is currently the recommended relayer.*
+```
+cargo install --version 0.9.0 ibc-relayer-cli --bin hermes --locked
+```
+
+3. Bootstrap two chains and create an IBC connection
+```
+make init
+```
+
+4. Start the relayer
+```
+make start-rly
+```
+
+## Demo
+
+**NOTE:** For the purposes of this demo the setup scripts have been provided with a set of hardcoded mnemonics that generate deterministic wallet addresses used below.
 
 ```bash
-# Open a seperate terminal
-
 # Store the following account addresses within the current shell env
 export DEMOWALLET_1=$(icad keys show demowallet1 -a --keyring-backend test --home ./data/test-1) && echo $DEMOWALLET_1;
 export DEMOWALLET_2=$(icad keys show demowallet2 -a --keyring-backend test --home ./data/test-2) && echo $DEMOWALLET_2;
+```
 
+### Registering an Interchain Account via IBC
+
+Register an Interchain Account using the `intertx register` cmd. 
+Here the message signer is used as the account owner.
+
+```bash
 # Register an interchain account on behalf of DEMOWALLET_1 where chain test-2 is the interchain accounts host
-icad tx intertx register --from $DEMOWALLET_1 --connection-id connection-0 --chain-id test-1 --gas 150000 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
-
-# Start the hermes relayer in the first terminal
-# This will also finish the channel creation handshake signalled during the register step
-make start-rly
+icad tx intertx register --from $DEMOWALLET_1 --connection-id connection-0 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
 
 # Query the address of the interchain account
-icad query intertx interchainaccounts $DEMOWALLET_1 --home ./data/test-1 --node tcp://localhost:16657
+icad query intertx interchainaccounts connection-0 $DEMOWALLET_1 --home ./data/test-1 --node tcp://localhost:16657
 
-# Store the interchain account address by parsing the query result
-export ICA_ADDR=$(icad query intertx interchainaccounts $DEMOWALLET_1 --home ./data/test-1 --node tcp://localhost:16657 -o json | jq -r '.interchain_account_address') && echo $ICA_ADDR
+# Store the interchain account address by parsing the query result: cosmos1hd0f4u7zgptymmrn55h3hy20jv2u0ctdpq23cpe8m9pas8kzd87smtf8al
+export ICA_ADDR=$(icad query intertx interchainaccounts connection-0 $DEMOWALLET_1 --home ./data/test-1 --node tcp://localhost:16657 -o json | jq -r '.interchain_account_address') && echo $ICA_ADDR
+```
 
-# Check the interchain account's balance on test-2 chain. It should be empty.
+#### Funding the Interchain Account wallet
+
+Allocate funds to the new Interchain Account wallet by using the `bank send` cmd.
+Note this is executed on the host chain to provide the account with an initial balance to execute transactions.
+
+```bash
+# Query the interchain account balance on the host chain. It should be empty.
 icad q bank balances $ICA_ADDR --chain-id test-2 --node tcp://localhost:26657
 
-# Send some assets to $ICA_ADDR.
+# Send funds to the interchain account.
 icad tx bank send $DEMOWALLET_2 $ICA_ADDR 10000stake --chain-id test-2 --home ./data/test-2 --node tcp://localhost:26657 --keyring-backend test -y
 
-# Check that the balance has been updated
+# Query the balance once again and observe the changes
 icad q bank balances $ICA_ADDR --chain-id test-2 --node tcp://localhost:26657
+```
 
-# Test sending assets from interchain account via ibc.
-icad tx intertx send $ICA_ADDR $DEMOWALLET_2 5000stake --chain-id test-1 --gas 90000 --home ./data/test-1 --node tcp://localhost:16657 --from $DEMOWALLET_1 --keyring-backend test -y
+#### Sending Interchain Account transactions
+
+Send Interchain Accounts transactions using the `intertx submit` cmd. 
+This command accepts a generic `sdk.Msg` JSON payload or path to JSON file as an arg.
+
+- **Example 1:** Staking Delegation
+
+```bash
+# Output the host chain validator operator address: cosmosvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnmxnh3k
+cat ./data/test-2/config/genesis.json | jq -r '.app_state.genutil.gen_txs[0].body.messages[0].validator_address'
+
+# Submit a staking delegation tx using the interchain account via ibc
+icad tx intertx submit \
+'{
+    "@type":"/cosmos.staking.v1beta1.MsgDelegate",
+    "delegator_address":"cosmos15ccshhmp0gsx29qpqq6g4zmltnnvgmyu9ueuadh9y2nc5zj0szls5gtddz",
+    "validator_address":"cosmosvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnmxnh3k",
+    "amount": {
+        "denom": "stake",
+        "amount": "1000"
+    }
+}' --connection-id connection-0 --from $DEMOWALLET_1 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
+
+# Alternatively provide a path to a JSON file
+icad tx intertx submit [path/to/msg.json] --connection-id connection-0 --from $DEMOWALLET_1 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
 
 # Wait until the relayer has relayed the packet
 
-# Query the interchain account balance and observe the changes in funds
+# Inspect the staking delegations on the host chain
+icad q staking delegations-to cosmosvaloper1qnk2n4nlkpw9xfqntladh74w6ujtulwnmxnh3k --home ./data/test-2 --node tcp://localhost:26657
+```
+
+- **Example 2:** Bank Send
+
+```bash
+# Submit a bank send tx using the interchain account via ibc
+icad tx intertx submit \
+'{
+    "@type":"/cosmos.bank.v1beta1.MsgSend",
+    "from_address":"cosmos15ccshhmp0gsx29qpqq6g4zmltnnvgmyu9ueuadh9y2nc5zj0szls5gtddz",
+    "to_address":"cosmos10h9stc5v6ntgeygf5xf945njqq5h32r53uquvw",
+    "amount": [
+        {
+            "denom": "stake",
+            "amount": "1000"
+        }
+    ]
+}' --connection-id connection-0 --from $DEMOWALLET_1 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
+
+# Alternatively provide a path to a JSON file
+icad tx intertx submit [path/to/msg.json] --connection-id connection-0 --from $DEMOWALLET_1 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
+
+# Wait until the relayer has relayed the packet
+
+# Query the interchain account balance on the host chain
 icad q bank balances $ICA_ADDR --chain-id test-2 --node tcp://localhost:26657
-
-# Fetch the host chain validator operator address
-export VAL_ADDR=$(cat ./data/test-2/config/genesis.json | jq -r '.app_state.genutil.gen_txs[0].body.messages[0].validator_address') && echo $VAL_ADDR
-
-# Perform a staking delegation using the interchain account with the remaining the funds via ibc
-icad tx intertx delegate $ICA_ADDR $VAL_ADDR 5000stake --from $DEMOWALLET_1 --chain-id test-1 --home ./data/test-1 --node tcp://localhost:16657 --keyring-backend test -y
-
-# Inspect the staking delegations
-icad q staking delegations-to $VAL_ADDR --home ./data/test-2 --node tcp://localhost:26657
 ```
 
 ## Collaboration

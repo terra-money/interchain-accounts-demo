@@ -5,7 +5,6 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	icatypes "github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
 	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
@@ -27,39 +26,23 @@ func NewMsgServerImpl(keeper Keeper) types.MsgServer {
 func (k msgServer) RegisterAccount(goCtx context.Context, msg *types.MsgRegisterAccount) (*types.MsgRegisterAccountResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	acc, err := sdk.AccAddressFromBech32(msg.Owner)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := k.RegisterInterchainAccount(ctx, acc, msg.ConnectionId); err != nil {
+	if err := k.icaControllerKeeper.RegisterInterchainAccount(ctx, msg.ConnectionId, msg.Owner); err != nil {
 		return nil, err
 	}
 
 	return &types.MsgRegisterAccountResponse{}, nil
 }
 
-// Send implements the Msg/Send interface
-func (k msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgSendResponse, error) {
+// SubmitTx implements the Msg/SubmitTx interface
+func (k msgServer) SubmitTx(goCtx context.Context, msg *types.MsgSubmitTx) (*types.MsgSubmitTxResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
-	err := k.TrySendCoins(ctx, msg.Owner, msg.InterchainAccount, msg.ToAddress, msg.Amount)
+
+	portID, err := icatypes.NewControllerPortID(msg.Owner)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.MsgSendResponse{}, nil
-}
-
-// Delegate implements the Msg/Delegate interface
-func (k msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*types.MsgDelegateResponse, error) {
-	ctx := sdk.UnwrapSDKContext(goCtx)
-
-	portID, err := icatypes.NewControllerPortID(msg.Owner.String())
-	if err != nil {
-		return nil, err
-	}
-
-	channelID, found := k.icaControllerKeeper.GetActiveChannelID(ctx, portID)
+	channelID, found := k.icaControllerKeeper.GetActiveChannelID(ctx, msg.ConnectionId, portID)
 	if !found {
 		return nil, sdkerrors.Wrapf(icatypes.ErrActiveChannelNotFound, "failed to retrieve active channel for port %s", portID)
 	}
@@ -69,13 +52,7 @@ func (k msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*typ
 		return nil, sdkerrors.Wrap(channeltypes.ErrChannelCapabilityNotFound, "module does not own channel capability")
 	}
 
-	msgDelegate := &stakingtypes.MsgDelegate{
-		DelegatorAddress: msg.InterchainAccount,
-		ValidatorAddress: msg.ValidatorAddress,
-		Amount:           msg.Amount,
-	}
-
-	data, err := icatypes.SerializeCosmosTx(k.cdc, []sdk.Msg{msgDelegate})
+	data, err := icatypes.SerializeCosmosTx(k.cdc, []sdk.Msg{msg.GetTxMsg()})
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +65,10 @@ func (k msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*typ
 	// timeoutTimestamp set to max value with the unsigned bit shifted to sastisfy hermes timestamp conversion
 	// it is the responsibility of the auth module developer to ensure an appropriate timeout timestamp
 	timeoutTimestamp := ^uint64(0) >> 1
-	_, err = k.icaControllerKeeper.TrySendTx(ctx, chanCap, portID, packetData, timeoutTimestamp)
+	_, err = k.icaControllerKeeper.SendTx(ctx, chanCap, msg.ConnectionId, portID, packetData, timeoutTimestamp)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.MsgDelegateResponse{}, nil
+	return &types.MsgSubmitTxResponse{}, nil
 }
