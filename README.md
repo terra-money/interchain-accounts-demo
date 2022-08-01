@@ -1,7 +1,5 @@
 # Interchain Accounts
 
-## Disclaimer
-
 Developers integrating Interchain Accounts may choose to firstly enable host chain functionality, and add authentication modules later as desired.
 Documentation regarding authentication modules can be found in the [IBC Developer Documentation](https://ibc.cosmos.network/main/apps/interchain-accounts/overview.html).
 
