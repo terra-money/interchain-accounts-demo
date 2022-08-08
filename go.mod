@@ -21,7 +21,7 @@ require (
 	google.golang.org/grpc v1.48.0
 )
 
-require github.com/cosmos/ibc-go/v5 v5.0.0-beta1
+require github.com/cosmos/ibc-go/v5 v5.0.0-beta1.0.20220808143409-aab3955c01e4
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
