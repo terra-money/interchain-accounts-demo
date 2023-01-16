@@ -149,7 +149,7 @@ func (im IBCModule) OnTimeoutPacket(
 	return nil
 }
 
-func handleMsgData(ctx sdk.Context, msgData *sdk.MsgData) (string, error) { //nolint:staticcheck
+func handleMsgData(ctx sdk.Context, msgData *sdk.MsgData) (string, error) { //nolint:staticcheck // SA1019: sdk.MsgData is deprecated: Do not use.
 	switch msgData.MsgType {
 	case sdk.MsgTypeURL(&banktypes.MsgSend{}):
 		msgResponse := &banktypes.MsgSendResponse{}
