@@ -24,8 +24,8 @@ $BINARY chains add-dir ./network/relayer/interchain-acc-config/chains --home $CH
 $BINARY paths add $CHAINID_1 $CHAINID_2 test1-test2 --file ./network/relayer/interchain-acc-config/paths/test1-test2.json --home $CHAIN_DIR/$RELAYER_DIR
 
 echo "Restoring accounts..."
-$BINARY keys restore $CHAINID_1 testkey "$MNEMONIC_1" --home $CHAIN_DIR/$RELAYER_DIR
-$BINARY keys restore $CHAINID_2 testkey "$MNEMONIC_2" --home $CHAIN_DIR/$RELAYER_DIR
+$BINARY keys restore $CHAINID_1 testkey1 "$MNEMONIC_1" --home $CHAIN_DIR/$RELAYER_DIR
+$BINARY keys restore $CHAINID_2 testkey2 "$MNEMONIC_2" --home $CHAIN_DIR/$RELAYER_DIR
 
 echo "Creating clients and a connection..."
 $BINARY tx connection test1-test2 --home $CHAIN_DIR/$RELAYER_DIR

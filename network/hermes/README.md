@@ -16,8 +16,8 @@ This serves as a basis for demonstration of interchain accounts e2e functionalit
 
 - Before attempting to create clients, connections and channels, the private keys for existing chains must be restored. Please note - currently the relayer does NOT support a keyring store to securely store the private key file. The key file will be stored on the local file system in the user `$HOME` folder under `$HOME/.hermes`
 ```
-hermes -c config.toml keys restore $CHAIN_ID -m $MNEMONIC
-hermes -c config.toml keys restore $CHAIN_ID -m $MNEMONIC
+hermes --config config.toml keys add --chain $CHAIN_ID --mnemonic-file <MNEMONIC_FILE>
+hermes --config config.toml keys add --chain $CHAIN_ID --mnemonic-file <MNEMONIC_FILE>
 ```
 
 - Execute the script
@@ -28,17 +28,17 @@ hermes -c config.toml keys restore $CHAIN_ID -m $MNEMONIC
 - Useful commands
 ```
 # Query client state
-hermes query client state $CHAIN_ID 07-tendermint-0
+hermes query client state --chain $CHAIN_ID --client 07-tendermint-0
 
 # Update client state by sending an update-client transaction
-hermes tx raw update-client $CHAIN_ID 07-tendermint-0
+hermes update client --host-chain $CHAIN_ID --client 07-tendermint-0
 
 # Query a connection end
-hermes query connection end $CHAIN_ID connection-0
+hermes query connection end --chain $CHAIN_ID --connection connection-0
 
 # Query channel ends
-hermes query channel end $CHAIN_ID transfer channel-0
-hermes query channel end $CHAIN_ID ibcaccount channel-1
+hermes query channel end --chain $CHAIN_ID --port transfer --channel channel-0
+hermes query channel end --chain $CHAIN_ID --port ibcaccount --channel channel-1
 ```
 
 Please refer to the [Hermes documentation](https://hermes.informal.systems/) for more information regarding various commands.

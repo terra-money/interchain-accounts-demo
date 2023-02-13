@@ -29,10 +29,10 @@ make install
 
 2. Download and install an IBC relayer. ([hermes](https://hermes.informal.systems/), [go relayer](https://github.com/cosmos/relayer) or both )
 ```bash
-# hermes
-cargo install --version 0.15.0 ibc-relayer-cli --bin hermes --locked
+# hermes (make sure to use v1.0.0 or later)
+cargo install ibc-relayer-cli --bin hermes --locked
 
-#go relayer (make sure to use v2.0.0-rc4 or later!)
+# go relayer (make sure to use v2.0.0-rc4 or later!)
 git clone https://github.com/cosmos/relayer.git
 cd relayer && git checkout v2.0.0-rc4
 make install
