@@ -33,7 +33,7 @@ build:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-protoVer=0.11.2
+protoVer=0.11.6
 protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
 protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace $(protoImageName)
 
@@ -58,8 +58,8 @@ proto-check-breaking:
 
 CMT_URL             = https://raw.githubusercontent.com/cometbft/cometbft/v0.37.0/proto/tendermint
 GOGO_PROTO_URL      = https://raw.githubusercontent.com/regen-network/protobuf/cosmos
-CONFIO_URL          = https://raw.githubusercontent.com/cosmos/ics23/v0.6.3
-SDK_PROTO_URL 		= https://raw.githubusercontent.com/cosmos/cosmos-sdk/v0.41.0/proto/cosmos
+CONFIO_URL          = https://raw.githubusercontent.com/cosmos/ics23/v0.7.1
+SDK_PROTO_URL 		= https://raw.githubusercontent.com/cosmos/cosmos-sdk/v0.47.0-rc3/proto/cosmos
 
 CMT_CRYPTO_TYPES    = third_party/proto/tendermint/crypto
 CMT_ABCI_TYPES      = third_party/proto/tendermint/abci
