@@ -6,6 +6,11 @@ set -e
 
 ### Sleep is needed otherwise the relayer crashes when trying to init
 sleep 1
+
+### Delete keys
+$HERMES_BINARY --config ./network/hermes/config.toml keys delete --chain test-1 --all
+$HERMES_BINARY --config ./network/hermes/config.toml keys delete --chain test-2 --all
+
 ### Restore Keys
 $HERMES_BINARY --config ./network/hermes/config.toml keys add --chain test-1 --mnemonic-file ./network/hermes/mnemonic-test1.txt
 sleep 5
