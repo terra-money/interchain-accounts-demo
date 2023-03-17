@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	cosmossdk.io/api v0.3.1
+	cosmossdk.io/errors v1.0.0-beta.7
 	cosmossdk.io/simapp v0.0.0-20230224204036-a6adb0821462
 	cosmossdk.io/tools/rosetta v0.2.1
 	github.com/cometbft/cometbft v0.37.0
@@ -33,7 +34,6 @@ require (
 	cloud.google.com/go/storage v1.29.0 // indirect
 	cosmossdk.io/core v0.5.1 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
-	cosmossdk.io/errors v1.0.0-beta.7 // indirect
 	cosmossdk.io/math v1.0.0-beta.6.0.20230216172121-959ce49135e4 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
@@ -163,3 +163,5 @@ require (
 	pgregory.net/rapid v0.5.5 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
